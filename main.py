@@ -92,24 +92,53 @@ def visualize(grid, path, start, goal):
     for r in range(rows):
         for c in range(cols):
             if grid[r][c] == 1:
-                plt.scatter(c, rows - r - 1, s=200)  # obstacle
+                plt.scatter(c, rows - r - 1, s=300, marker='s')  # obstacle
             else:
-                plt.scatter(c, rows - r - 1, s=200, alpha=0.3)
+                plt.scatter(c, rows - r - 1, s=100, alpha=0.2)
 
     # Draw path
     if path:
         x = [p[1] for p in path]
         y = [rows - p[0] - 1 for p in path]
-        plt.plot(x, y, linewidth=3)
+        plt.plot(x, y, linewidth=4)
 
-    # Start & Goal
-    plt.scatter(start[1], rows - start[0] - 1, s=300, marker='o')
-    plt.scatter(goal[1], rows - goal[0] - 1, s=300, marker='X')
+    # Start and Goal
+    plt.scatter(start[1], rows - start[0] - 1, s=400, marker='o')
+    plt.scatter(goal[1], rows - goal[0] - 1, s=400, marker='X')
 
     plt.title("A* Path Planning")
-    plt.grid()
+    plt.grid(True)
     plt.savefig("output.png")
     plt.show()
+    def visualize(grid, path, start, goal):
+    rows = len(grid)
+    cols = len(grid[0])
+
+    plt.figure(figsize=(6, 6))
+
+    # Draw grid
+    for r in range(rows):
+        for c in range(cols):
+            if grid[r][c] == 1:
+                plt.scatter(c, rows - r - 1, s=300, marker='s')  # obstacle
+            else:
+                plt.scatter(c, rows - r - 1, s=100, alpha=0.2)
+
+    # Draw path
+    if path:
+        x = [p[1] for p in path]
+        y = [rows - p[0] - 1 for p in path]
+        plt.plot(x, y, linewidth=4)
+
+    # Start and Goal
+    plt.scatter(start[1], rows - start[0] - 1, s=400, marker='o')
+    plt.scatter(goal[1], rows - goal[0] - 1, s=400, marker='X')
+
+    plt.title("A* Path Planning")
+    plt.grid(True)
+    plt.savefig("output.png")
+    plt.show()
+    print("Path length:", len(path))
 
 
 # =========================
