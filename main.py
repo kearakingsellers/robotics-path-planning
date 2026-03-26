@@ -1,5 +1,6 @@
 import heapq
 import matplotlib.pyplot as plt
+import time
 
 # =========================
 # NODE CLASS
@@ -8,28 +9,31 @@ class Node:
     def __init__(self, position, parent=None):
         self.position = position
         self.parent = parent
-
-        self.g = 0  # cost from start
-        self.h = 0  # heuristic to goal
-        self.f = 0  # total cost
+        self.g = 0
+        self.h = 0
+        self.f = 0
 
     def __lt__(self, other):
         return self.f < other.f
 
 
 # =========================
-# HEURISTIC (MANHATTAN)
+# HEURISTIC (EUCLIDEAN for diagonal)
 # =========================
 def heuristic(a, b):
-    return abs(a[0] - b[0]) + abs(a[1] - b[1])
+    return ((a[0] - b[0])**2 + (a[1] - b[1])**2) ** 0.5
 
 
 # =========================
-# GET NEIGHBORS
+# GET NEIGHBORS (8 directions)
 # =========================
 def get_neighbors(node, grid):
+    directions = [
+        (-1, 0), (1, 0), (0, -1), (0, 1),   # straight
+        (-1, -1), (-1, 1), (1, -1), (1, 1)  # diagonal
+    ]
+
     neighbors = []
-    directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
 
     for d in directions:
         row = node.position[0] + d[0]
@@ -56,7 +60,6 @@ def astar(grid, start, goal):
         current_node = heapq.heappop(open_list)
         closed_set.add(current_node.position)
 
-        # Goal reached
         if current_node.position == goal:
             path = []
             while current_node:
@@ -70,7 +73,13 @@ def astar(grid, start, goal):
 
             neighbor = Node(neighbor_pos, current_node)
 
-            neighbor.g = current_node.g + 1
+            # Diagonal cost handling
+            if neighbor_pos[0] != current_node.position[0] and neighbor_pos[1] != current_node.position[1]:
+                step_cost = 1.4  # diagonal
+            else:
+                step_cost = 1    # straight
+
+            neighbor.g = current_node.g + step_cost
             neighbor.h = heuristic(neighbor_pos, goal)
             neighbor.f = neighbor.g + neighbor.h
 
@@ -80,69 +89,43 @@ def astar(grid, start, goal):
 
 
 # =========================
-# VISUALIZATION
+# ANIMATION VISUALIZATION
 # =========================
-def visualize(grid, path, start, goal):
+def animate(grid, path, start, goal):
     rows = len(grid)
-    cols = len(grid[0])
 
     plt.figure(figsize=(6, 6))
 
-    # Draw grid
+    # draw base grid
     for r in range(rows):
-        for c in range(cols):
+        for c in range(len(grid[0])):
             if grid[r][c] == 1:
-                plt.scatter(c, rows - r - 1, s=300, marker='s')  # obstacle
+                plt.scatter(c, rows - r - 1, s=300, marker='s')
             else:
                 plt.scatter(c, rows - r - 1, s=100, alpha=0.2)
 
-    # Draw path
-    if path:
-        x = [p[1] for p in path]
-        y = [rows - p[0] - 1 for p in path]
-        plt.plot(x, y, linewidth=4)
+    # draw path gradually
+    for i in range(len(path)):
+        x = [p[1] for p in path[:i+1]]
+        y = [rows - p[0] - 1 for p in path[:i+1]]
 
-    # Start and Goal
+        plt.plot(x, y, linewidth=3)
+        plt.scatter(path[i][1], rows - path[i][0] - 1, s=200)
+
+        plt.pause(0.3)
+
+    # start and goal
     plt.scatter(start[1], rows - start[0] - 1, s=400, marker='o')
     plt.scatter(goal[1], rows - goal[0] - 1, s=400, marker='X')
 
-    plt.title("A* Path Planning")
+    plt.title("A* Path Planning (Animated)")
     plt.grid(True)
     plt.savefig("output.png")
     plt.show()
-    def visualize(grid, path, start, goal):
-    rows = len(grid)
-    cols = len(grid[0])
-
-    plt.figure(figsize=(6, 6))
-
-    # Draw grid
-    for r in range(rows):
-        for c in range(cols):
-            if grid[r][c] == 1:
-                plt.scatter(c, rows - r - 1, s=300, marker='s')  # obstacle
-            else:
-                plt.scatter(c, rows - r - 1, s=100, alpha=0.2)
-
-    # Draw path
-    if path:
-        x = [p[1] for p in path]
-        y = [rows - p[0] - 1 for p in path]
-        plt.plot(x, y, linewidth=4)
-
-    # Start and Goal
-    plt.scatter(start[1], rows - start[0] - 1, s=400, marker='o')
-    plt.scatter(goal[1], rows - goal[0] - 1, s=400, marker='X')
-
-    plt.title("A* Path Planning")
-    plt.grid(True)
-    plt.savefig("output.png")
-    plt.show()
-    print("Path length:", len(path))
 
 
 # =========================
-# MAIN TEST
+# MAIN
 # =========================
 if __name__ == "__main__":
     grid = [
@@ -159,5 +142,6 @@ if __name__ == "__main__":
     path = astar(grid, start, goal)
 
     print("Path:", path)
+    print("Path length:", len(path))
 
-    visualize(grid, path, start, goal)
+    animate(grid, path, start, goal)
