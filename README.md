@@ -1,6 +1,9 @@
 # A* Path Planning (Robotics)
 
-This project implements the A* (A-star) algorithm for robot path planning on a 2D grid.
+## Overview
+This project demonstrates the A* path planning algorithm used in robotics for finding the shortest path in a grid-based environment with obstacles.
+
+It highlights how heuristic-driven search improves efficiency compared to uninformed algorithms like BFS and Dijkstra.
 
 ## Features
 - Grid-based navigation
