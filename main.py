@@ -1,6 +1,5 @@
 import heapq
 import matplotlib.pyplot as plt
-import time
 
 # =========================
 # NODE CLASS
@@ -18,7 +17,7 @@ class Node:
 
 
 # =========================
-# HEURISTIC (EUCLIDEAN for diagonal)
+# HEURISTIC
 # =========================
 def heuristic(a, b):
     return ((a[0] - b[0])**2 + (a[1] - b[1])**2) ** 0.5
@@ -29,19 +28,19 @@ def heuristic(a, b):
 # =========================
 def get_neighbors(node, grid):
     directions = [
-        (-1, 0), (1, 0), (0, -1), (0, 1),   # straight
-        (-1, -1), (-1, 1), (1, -1), (1, 1)  # diagonal
+        (-1, 0), (1, 0), (0, -1), (0, 1),
+        (-1, -1), (-1, 1), (1, -1), (1, 1)
     ]
 
     neighbors = []
 
     for d in directions:
-        row = node.position[0] + d[0]
-        col = node.position[1] + d[1]
+        r = node.position[0] + d[0]
+        c = node.position[1] + d[1]
 
-        if 0 <= row < len(grid) and 0 <= col < len(grid[0]):
-            if grid[row][col] == 0:
-                neighbors.append((row, col))
+        if 0 <= r < len(grid) and 0 <= c < len(grid[0]):
+            if grid[r][c] == 0:
+                neighbors.append((r, c))
 
     return neighbors
 
@@ -67,20 +66,20 @@ def astar(grid, start, goal):
                 current_node = current_node.parent
             return path[::-1]
 
-        for neighbor_pos in get_neighbors(current_node, grid):
-            if neighbor_pos in closed_set:
+        for pos in get_neighbors(current_node, grid):
+            if pos in closed_set:
                 continue
 
-            neighbor = Node(neighbor_pos, current_node)
+            neighbor = Node(pos, current_node)
 
-            # Diagonal cost handling
-            if neighbor_pos[0] != current_node.position[0] and neighbor_pos[1] != current_node.position[1]:
-                step_cost = 1.4  # diagonal
+            # diagonal vs straight cost
+            if pos[0] != current_node.position[0] and pos[1] != current_node.position[1]:
+                step_cost = 1.4
             else:
-                step_cost = 1    # straight
+                step_cost = 1
 
             neighbor.g = current_node.g + step_cost
-            neighbor.h = heuristic(neighbor_pos, goal)
+            neighbor.h = heuristic(pos, goal)
             neighbor.f = neighbor.g + neighbor.h
 
             heapq.heappush(open_list, neighbor)
@@ -89,14 +88,13 @@ def astar(grid, start, goal):
 
 
 # =========================
-# ANIMATION VISUALIZATION
+# VISUALIZATION
 # =========================
-def animate(grid, path, start, goal):
+def visualize(grid, path, start, goal):
     rows = len(grid)
 
     plt.figure(figsize=(6, 6))
 
-    # draw base grid
     for r in range(rows):
         for c in range(len(grid[0])):
             if grid[r][c] == 1:
@@ -104,44 +102,64 @@ def animate(grid, path, start, goal):
             else:
                 plt.scatter(c, rows - r - 1, s=100, alpha=0.2)
 
-    # draw path gradually
-    for i in range(len(path)):
-        x = [p[1] for p in path[:i+1]]
-        y = [rows - p[0] - 1 for p in path[:i+1]]
+    if path:
+        x = [p[1] for p in path]
+        y = [rows - p[0] - 1 for p in path]
+        plt.plot(x, y, linewidth=4)
 
-        plt.plot(x, y, linewidth=3)
-        plt.scatter(path[i][1], rows - path[i][0] - 1, s=200)
-
-        plt.pause(0.3)
-
-    # start and goal
     plt.scatter(start[1], rows - start[0] - 1, s=400, marker='o')
     plt.scatter(goal[1], rows - goal[0] - 1, s=400, marker='X')
 
-    plt.title("A* Path Planning (Animated)")
+    plt.title("A* Path Planning")
     plt.grid(True)
-    plt.savefig("output.png")
+    plt.savefig("output.png", bbox_inches='tight')
     plt.show()
 
 
 # =========================
-# MAIN
+# MULTIPLE MAPS
+# =========================
+def get_map(choice):
+    maps = {
+        1: [
+            [0,0,0,0,1],
+            [1,1,0,1,0],
+            [0,0,0,1,0],
+            [0,1,1,0,0],
+            [0,0,0,0,0]
+        ],
+        2: [
+            [0,0,1,0,0],
+            [0,1,1,0,1],
+            [0,0,0,0,0],
+            [1,0,1,1,0],
+            [0,0,0,0,0]
+        ]
+    }
+    return maps.get(choice, maps[1])
+
+
+# =========================
+# MAIN SYSTEM
 # =========================
 if __name__ == "__main__":
-    grid = [
-        [0, 0, 0, 0, 1],
-        [1, 1, 0, 1, 0],
-        [0, 0, 0, 1, 0],
-        [0, 1, 1, 0, 0],
-        [0, 0, 0, 0, 0]
-    ]
 
-    start = (0, 0)
-    goal = (4, 4)
+    print("Select Map: 1 or 2")
+    map_choice = int(input("Enter map number: "))
+
+    grid = get_map(map_choice)
+
+    print("Enter Start Position (row col): ")
+    start = tuple(map(int, input().split()))
+
+    print("Enter Goal Position (row col): ")
+    goal = tuple(map(int, input().split()))
 
     path = astar(grid, start, goal)
 
-    print("Path:", path)
-    print("Path length:", len(path))
-
-    animate(grid, path, start, goal)
+    if path:
+        print("Path:", path)
+        print("Path length:", len(path))
+        visualize(grid, path, start, goal)
+    else:
+        print("No path found!")
