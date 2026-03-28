@@ -1,20 +1,25 @@
-# A* Path Planning (Robotics)
+# 🤖 Robotics Path Planning using A*
 
-## Overview
-This project demonstrates the A* path planning algorithm used in robotics for finding the shortest path in a grid-based environment with obstacles.
+This project implements the A* (A-Star) algorithm for path planning on a 2D grid.
 
-It highlights how heuristic-driven search improves efficiency compared to uninformed algorithms like BFS and Dijkstra.
-
-## Features
-- Grid-based navigation
+## 🚀 Features
+- A* pathfinding algorithm
+- Manhattan distance heuristic
 - Obstacle avoidance
-- Shortest path using A*
-- Visualization using matplotlib
+- Grid-based visualization using matplotlib
+- Multiple map selection
 
-## Example Output
-![Output](output.png)
+## 🧠 Algorithm
+A* uses:
+f(n) = g(n) + h(n)
 
-## How to Run
+- g(n): cost from start to node
+- h(n): heuristic (Manhattan distance)
+- f(n): total estimated cost
+
+## 📸 Output
+![Path Planning Output](output.png)
+
+## ▶️ How to Run
 ```bash
-pip install matplotlib
 python main.py
