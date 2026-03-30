@@ -18,7 +18,7 @@ f(n) = g(n) + h(n)
 - f(n): total estimated cost
 
 ## 📸 Output
-![Path Planning Output](output.png)
+![Output](output_v2.png)
 
 ## ▶️ How to Run
 ```bash

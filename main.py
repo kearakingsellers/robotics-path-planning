@@ -163,7 +163,7 @@ def visualize(grid, path, start, goal):
     ax.invert_yaxis()
     plt.legend()
     plt.title("A* Path Planning (Diagonal + Euclidean)")
-    plt.savefig("output.png", bbox_inches='tight')
+    plt.savefig("output_v2.png", bbox_inches='tight')
     plt.show()
 
 
