@@ -72,6 +72,23 @@ def reconstruct_path(current_node):
         current_node = current_node.parent
     return path[::-1]
 
+def inflate_obstacles(grid, radius=1):
+    rows = len(grid)
+    cols = len(grid[0])
+
+    inflated = [row[:] for row in grid]
+
+    for r in range(rows):
+        for c in range(cols):
+            if grid[r][c] == 1:
+                for i in range(-radius, radius + 1):
+                    for j in range(-radius, radius + 1):
+                        nr, nc = r + i, c + j
+                        if 0 <= nr < rows and 0 <= nc < cols:
+                            inflated[nr][nc] = 1
+
+    return inflated
+
 
 # ==============================
 # A* ALGORITHM
@@ -187,6 +204,7 @@ if __name__ == "__main__":
         map_choice = 1
 
     grid = get_map(map_choice)
+    grid = inflate_obstacles(grid, radius=0)
 
     start = (0, 0)
     goal = (len(grid)-1, len(grid[0])-1)
