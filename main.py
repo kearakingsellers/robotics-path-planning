@@ -1,99 +1,75 @@
-import heapq
 import math
+import heapq
 import matplotlib.pyplot as plt
 
-# ==============================
+# =========================
 # NODE CLASS
-# ==============================
-
+# =========================
 class Node:
     def __init__(self, position, parent=None):
         self.position = position
         self.parent = parent
-
-        self.g = 0  # cost from start
-        self.h = 0  # heuristic to goal
-        self.f = 0  # total cost
+        self.g = 0
+        self.h = 0
+        self.f = 0
 
     def __lt__(self, other):
         return self.f < other.f
 
 
-# ==============================
+# =========================
 # HEURISTIC (EUCLIDEAN)
-# ==============================
-
+# =========================
 def heuristic(a, b):
     return math.sqrt((a[0] - b[0])**2 + (a[1] - b[1])**2)
 
 
-# ==============================
-# MOVEMENT COST
-# ==============================
-
-def movement_cost(current, neighbor):
-    # Diagonal movement
-    if current[0] != neighbor[0] and current[1] != neighbor[1]:
-        return math.sqrt(2)
-    return 1
-
-
-# ==============================
-# GET NEIGHBORS (8 DIRECTIONS)
-# ==============================
-
+# =========================
+# GET NEIGHBORS (DIAGONAL)
+# =========================
 def get_neighbors(node, grid):
     directions = [
         (-1, 0), (1, 0), (0, -1), (0, 1),   # straight
-        (-1, -1), (-1, 1), (1, -1), (1, 1)  # diagonal
+        (-1, -1), (-1, 1), (1, -1), (1, 1) # diagonal
     ]
 
     neighbors = []
-
     for d in directions:
         new_row = node.position[0] + d[0]
         new_col = node.position[1] + d[1]
 
         if 0 <= new_row < len(grid) and 0 <= new_col < len(grid[0]):
-            if grid[new_row][new_col] == 0:
+            if grid[new_row][new_col] != 1:  # not obstacle
                 neighbors.append((new_row, new_col))
 
     return neighbors
 
 
-# ==============================
-# RECONSTRUCT PATH
-# ==============================
-
-def reconstruct_path(current_node):
-    path = []
-    while current_node:
-        path.append(current_node.position)
-        current_node = current_node.parent
-    return path[::-1]
-
-def inflate_obstacles(grid, radius=1):
+# =========================
+# COST MAP
+# =========================
+def create_cost_map(grid):
     rows = len(grid)
     cols = len(grid[0])
 
-    inflated = [row[:] for row in grid]
+    cost_map = [row[:] for row in grid]
 
     for r in range(rows):
         for c in range(cols):
             if grid[r][c] == 1:
-                for i in range(-radius, radius + 1):
-                    for j in range(-radius, radius + 1):
+                for i in range(-1, 2):
+                    for j in range(-1, 2):
                         nr, nc = r + i, c + j
                         if 0 <= nr < rows and 0 <= nc < cols:
-                            inflated[nr][nc] = 1
+                            if cost_map[nr][nc] == 0:
+                                cost_map[nr][nc] = 3  # risky zone
 
-    return inflated
+    return cost_map
 
 
-# ==============================
+# =========================
 # A* ALGORITHM
-# ==============================
-
+# =========================
 def astar(grid, start, goal):
     open_list = []
     closed_set = set()
@@ -105,110 +81,104 @@ def astar(grid, start, goal):
 
     while open_list:
         current_node = heapq.heappop(open_list)
-
-        if current_node.position == goal_node.position:
-            return reconstruct_path(current_node)
-
         closed_set.add(current_node.position)
 
-        for neighbor_pos in get_neighbors(current_node, grid):
+        if current_node.position == goal_node.position:
+            path = []
+            while current_node:
+                path.append(current_node.position)
+                current_node = current_node.parent
+            return path[::-1]
 
+        neighbors = get_neighbors(current_node, grid)
+
+        for neighbor_pos in neighbors:
             if neighbor_pos in closed_set:
                 continue
 
             neighbor_node = Node(neighbor_pos, current_node)
 
-            # Cost calculations
-            neighbor_node.g = current_node.g + movement_cost(current_node.position, neighbor_pos)
+            cell_cost = grid[neighbor_pos[0]][neighbor_pos[1]]
+            tentative_g = current_node.g + 1 + cell_cost * 2
+
+            neighbor_node.g = tentative_g
             neighbor_node.h = heuristic(neighbor_pos, goal)
             neighbor_node.f = neighbor_node.g + neighbor_node.h
-
-            # Avoid duplicates in open list
-            if any(n.position == neighbor_node.position and n.f <= neighbor_node.f for n in open_list):
-                continue
 
             heapq.heappush(open_list, neighbor_node)
 
     return None
 
 
-# ==============================
+# =========================
 # VISUALIZATION
-# ==============================
-
+# =========================
 def visualize(grid, path, start, goal):
-    rows = len(grid)
-    cols = len(grid[0])
+    plt.figure(figsize=(6, 6))
 
-    fig, ax = plt.subplots()
+    for r in range(len(grid)):
+        for c in range(len(grid[0])):
+            if grid[r][c] == 1:
+                plt.scatter(c, r, color='black', s=200)
+            elif grid[r][c] > 1:
+                plt.scatter(c, r, color='gray', s=100)
 
-    for i in range(rows):
-        for j in range(cols):
-            if grid[i][j] == 1:
-                ax.add_patch(plt.Rectangle((j, i), 1, 1, color='black'))
-
-    # Draw path
     if path:
-        x = [p[1] + 0.5 for p in path]
-        y = [p[0] + 0.5 for p in path]
-        ax.plot(x, y, marker='o')
+        x = [p[1] for p in path]
+        y = [p[0] for p in path]
+        plt.plot(x, y, marker='o')
 
-    # Start & Goal
-    ax.plot(start[1] + 0.5, start[0] + 0.5, "go", label="Start")
-    ax.plot(goal[1] + 0.5, goal[0] + 0.5, "ro", label="Goal")
+    plt.scatter(start[1], start[0], color='green', label='Start', s=100)
+    plt.scatter(goal[1], goal[0], color='red', label='Goal', s=100)
 
-    ax.set_xlim(0, cols)
-    ax.set_ylim(0, rows)
-    ax.set_aspect('equal')
-    ax.invert_yaxis()
+    plt.gca().invert_yaxis()
     plt.legend()
-    plt.title("A* Path Planning (Diagonal + Euclidean)")
-    plt.savefig("output_v2.png", bbox_inches='tight')
+    plt.title("A* Path Planning with Cost Map")
+
+    plt.savefig("output.png", bbox_inches='tight')  # SAVE IMAGE
     plt.show()
 
 
-# ==============================
-# MAP SELECTION
-# ==============================
-
+# =========================
+# MAPS
+# =========================
 def get_map(choice):
     maps = {
         1: [
             [0,0,0,0,0],
-            [1,1,0,1,0],
-            [0,0,0,1,0],
-            [0,1,0,0,0],
-            [0,0,0,1,0]
+            [0,1,1,0,0],
+            [0,0,0,0,0],
+            [0,1,0,1,0],
+            [0,0,0,0,0]
         ],
         2: [
-            [0,0,0,0,0,0],
-            [0,1,1,1,1,0],
-            [0,0,0,0,1,0],
-            [1,1,1,0,1,0],
-            [0,0,0,0,0,0]
+            [0,0,0,0,0,0,0],
+            [0,1,1,1,0,0,0],
+            [0,0,0,1,0,1,0],
+            [0,1,0,0,0,1,0],
+            [0,1,0,1,0,0,0],
+            [0,0,0,1,0,1,0],
+            [0,0,0,0,0,0,0]
         ]
     }
     return maps.get(choice, maps[1])
 
 
-# ==============================
+# =========================
 # MAIN
-# ==============================
-
+# =========================
 if __name__ == "__main__":
     print("Select Map: 1 or 2")
-    
     try:
         map_choice = int(input("Enter map number: "))
-    except ValueError:
-        print("Invalid input! Defaulting to Map 1")
+    except:
         map_choice = 1
 
     grid = get_map(map_choice)
-    grid = inflate_obstacles(grid, radius=0)
+    grid = create_cost_map(grid)
 
-    start = (0, 0)
-    goal = (len(grid)-1, len(grid[0])-1)
+    start = (0, 1)
+    goal = (len(grid)-1, len(grid[0])-2)
 
     path = astar(grid, start, goal)
 
