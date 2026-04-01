@@ -66,6 +66,10 @@ def create_cost_map(grid):
 
     return cost_map
 
+def add_dynamic_obstacle(grid, position):
+    r, c = position
+    if 0 <= r < len(grid) and 0 <= c < len(grid[0]):
+        grid[r][c] = 1
 
 # =========================
 # A* ALGORITHM
@@ -136,7 +140,9 @@ def visualize(grid, path, start, goal):
     plt.title("A* Path Planning with Cost Map")
 
     plt.savefig("output.png", bbox_inches='tight')  # SAVE IMAGE
-    plt.show()
+    plt.show(block=False)
+    plt.pause(2)
+    plt.close()
 
 
 # =========================
@@ -180,11 +186,20 @@ if __name__ == "__main__":
     start = (0, 1)
     goal = (len(grid)-1, len(grid[0])-2)
 
-    path = astar(grid, start, goal)
+    # FIRST PATH
+    path1 = astar(grid, start, goal)
 
-    if path:
-        print("Path found:", path)
-    else:
-        print("No path found")
+    print("Initial Path:", path1)
+    visualize(grid, path1, start, goal)
 
-    visualize(grid, path, start, goal)
+    # ADD DYNAMIC OBSTACLE (middle of path)
+    if path1 and len(path1) > 3:
+        block = path1[len(path1)//2]
+        print("Adding obstacle at:", block)
+        add_dynamic_obstacle(grid, block)
+
+    # REPLAN
+    path2 = astar(grid, start, goal)
+
+    print("New Path:", path2)
+    visualize(grid, path2, start, goal)
