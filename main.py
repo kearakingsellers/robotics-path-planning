@@ -25,12 +25,12 @@ def heuristic(a, b):
 
 
 # =========================
-# GET NEIGHBORS (DIAGONAL)
+# GET NEIGHBORS (8-DIRECTION)
 # =========================
 def get_neighbors(node, grid):
     directions = [
-        (-1, 0), (1, 0), (0, -1), (0, 1),   # straight
-        (-1, -1), (-1, 1), (1, -1), (1, 1) # diagonal
+        (-1, 0), (1, 0), (0, -1), (0, 1),
+        (-1, -1), (-1, 1), (1, -1), (1, 1)
     ]
 
     neighbors = []
@@ -39,7 +39,7 @@ def get_neighbors(node, grid):
         new_col = node.position[1] + d[1]
 
         if 0 <= new_row < len(grid) and 0 <= new_col < len(grid[0]):
-            if grid[new_row][new_col] != 1:  # not obstacle
+            if grid[new_row][new_col] != 1:
                 neighbors.append((new_row, new_col))
 
     return neighbors
@@ -51,7 +51,6 @@ def get_neighbors(node, grid):
 def create_cost_map(grid):
     rows = len(grid)
     cols = len(grid[0])
-
     cost_map = [row[:] for row in grid]
 
     for r in range(rows):
@@ -62,14 +61,10 @@ def create_cost_map(grid):
                         nr, nc = r + i, c + j
                         if 0 <= nr < rows and 0 <= nc < cols:
                             if cost_map[nr][nc] == 0:
-                                cost_map[nr][nc] = 3  # risky zone
+                                cost_map[nr][nc] = 3  # risky
 
     return cost_map
 
-def add_dynamic_obstacle(grid, position):
-    r, c = position
-    if 0 <= r < len(grid) and 0 <= c < len(grid[0]):
-        grid[r][c] = 1
 
 # =========================
 # A* ALGORITHM
@@ -79,24 +74,20 @@ def astar(grid, start, goal):
     closed_set = set()
 
     start_node = Node(start)
-    goal_node = Node(goal)
-
     heapq.heappush(open_list, start_node)
 
     while open_list:
         current_node = heapq.heappop(open_list)
         closed_set.add(current_node.position)
 
-        if current_node.position == goal_node.position:
+        if current_node.position == goal:
             path = []
             while current_node:
                 path.append(current_node.position)
                 current_node = current_node.parent
             return path[::-1]
 
-        neighbors = get_neighbors(current_node, grid)
-
-        for neighbor_pos in neighbors:
+        for neighbor_pos in get_neighbors(current_node, grid):
             if neighbor_pos in closed_set:
                 continue
 
@@ -115,9 +106,42 @@ def astar(grid, start, goal):
 
 
 # =========================
+# PATH SMOOTHING
+# =========================
+def smooth_path(path):
+    if not path:
+        return path
+
+    smooth = [path[0]]
+
+    for i in range(1, len(path) - 1):
+        prev = smooth[-1]
+        curr = path[i]
+        next = path[i + 1]
+
+        dir1 = (curr[0] - prev[0], curr[1] - prev[1])
+        dir2 = (next[0] - curr[0], next[1] - curr[1])
+
+        if dir1 != dir2:
+            smooth.append(curr)
+
+    smooth.append(path[-1])
+    return smooth
+
+
+# =========================
+# DYNAMIC OBSTACLE
+# =========================
+def add_dynamic_obstacle(grid, position):
+    r, c = position
+    if 0 <= r < len(grid) and 0 <= c < len(grid[0]):
+        grid[r][c] = 1
+
+
+# =========================
 # VISUALIZATION
 # =========================
-def visualize(grid, path, start, goal):
+def visualize(grid, path, start, goal, filename):
     plt.figure(figsize=(6, 6))
 
     for r in range(len(grid)):
@@ -137,9 +161,9 @@ def visualize(grid, path, start, goal):
 
     plt.gca().invert_yaxis()
     plt.legend()
-    plt.title("A* Path Planning with Cost Map")
+    plt.title("A* Path Planning (Smoothed + Cost Map)")
 
-    plt.savefig("output.png", bbox_inches='tight')  # SAVE IMAGE
+    plt.savefig(filename, bbox_inches='tight')
     plt.show(block=False)
     plt.pause(2)
     plt.close()
@@ -156,15 +180,6 @@ def get_map(choice):
             [0,0,0,0,0],
             [0,1,0,1,0],
             [0,0,0,0,0]
-        ],
-        2: [
-            [0,0,0,0,0,0,0],
-            [0,1,1,1,0,0,0],
-            [0,0,0,1,0,1,0],
-            [0,1,0,0,0,1,0],
-            [0,1,0,1,0,0,0],
-            [0,0,0,1,0,1,0],
-            [0,0,0,0,0,0,0]
         ]
     }
     return maps.get(choice, maps[1])
@@ -174,25 +189,26 @@ def get_map(choice):
 # MAIN
 # =========================
 if __name__ == "__main__":
-    print("Select Map: 1 or 2")
+    print("Select Map: 1")
     try:
         map_choice = int(input("Enter map number: "))
     except:
         map_choice = 1
 
-    grid = get_map(map_choice)
-    grid = create_cost_map(grid)
+    base_grid = get_map(map_choice)
+    grid = create_cost_map(base_grid)
 
     start = (0, 1)
     goal = (len(grid)-1, len(grid[0])-2)
 
     # FIRST PATH
     path1 = astar(grid, start, goal)
+    path1 = smooth_path(path1)
 
     print("Initial Path:", path1)
-    visualize(grid, path1, start, goal)
+    visualize(grid, path1, start, goal, "output1.png")
 
-    # ADD DYNAMIC OBSTACLE (middle of path)
+    # ADD DYNAMIC OBSTACLE
     if path1 and len(path1) > 3:
         block = path1[len(path1)//2]
         print("Adding obstacle at:", block)
@@ -200,6 +216,7 @@ if __name__ == "__main__":
 
     # REPLAN
     path2 = astar(grid, start, goal)
+    path2 = smooth_path(path2)
 
     print("New Path:", path2)
-    visualize(grid, path2, start, goal)
+    visualize(grid, path2, start, goal, "output2.png")
