@@ -1,6 +1,7 @@
 import math
 import heapq
 import matplotlib.pyplot as plt
+import numpy as np
 
 # =========================
 # NODE CLASS
@@ -18,29 +19,29 @@ class Node:
 
 
 # =========================
-# HEURISTIC (EUCLIDEAN)
+# HEURISTIC
 # =========================
 def heuristic(a, b):
     return math.sqrt((a[0] - b[0])**2 + (a[1] - b[1])**2)
 
 
 # =========================
-# GET NEIGHBORS (8-DIRECTION)
+# NEIGHBORS
 # =========================
 def get_neighbors(node, grid):
     directions = [
-        (-1, 0), (1, 0), (0, -1), (0, 1),
-        (-1, -1), (-1, 1), (1, -1), (1, 1)
+        (-1,0),(1,0),(0,-1),(0,1),
+        (-1,-1),(-1,1),(1,-1),(1,1)
     ]
 
     neighbors = []
     for d in directions:
-        new_row = node.position[0] + d[0]
-        new_col = node.position[1] + d[1]
+        r = node.position[0] + d[0]
+        c = node.position[1] + d[1]
 
-        if 0 <= new_row < len(grid) and 0 <= new_col < len(grid[0]):
-            if grid[new_row][new_col] != 1:
-                neighbors.append((new_row, new_col))
+        if 0 <= r < len(grid) and 0 <= c < len(grid[0]):
+            if grid[r][c] != 1:
+                neighbors.append((r,c))
 
     return neighbors
 
@@ -56,57 +57,56 @@ def create_cost_map(grid):
     for r in range(rows):
         for c in range(cols):
             if grid[r][c] == 1:
-                for i in range(-1, 2):
-                    for j in range(-1, 2):
-                        nr, nc = r + i, c + j
+                for i in range(-1,2):
+                    for j in range(-1,2):
+                        nr, nc = r+i, c+j
                         if 0 <= nr < rows and 0 <= nc < cols:
                             if cost_map[nr][nc] == 0:
-                                cost_map[nr][nc] = 3  # risky
+                                cost_map[nr][nc] = 3
 
     return cost_map
 
 
 # =========================
-# A* ALGORITHM
+# A*
 # =========================
 def astar(grid, start, goal):
     open_list = []
-    closed_set = set()
+    closed = set()
 
     start_node = Node(start)
     heapq.heappush(open_list, start_node)
 
     while open_list:
-        current_node = heapq.heappop(open_list)
-        closed_set.add(current_node.position)
+        current = heapq.heappop(open_list)
 
-        if current_node.position == goal:
+        if current.position == goal:
             path = []
-            while current_node:
-                path.append(current_node.position)
-                current_node = current_node.parent
+            while current:
+                path.append(current.position)
+                current = current.parent
             return path[::-1]
 
-        for neighbor_pos in get_neighbors(current_node, grid):
-            if neighbor_pos in closed_set:
+        closed.add(current.position)
+
+        for pos in get_neighbors(current, grid):
+            if pos in closed:
                 continue
 
-            neighbor_node = Node(neighbor_pos, current_node)
+            node = Node(pos, current)
 
-            cell_cost = grid[neighbor_pos[0]][neighbor_pos[1]]
-            tentative_g = current_node.g + 1 + cell_cost * 2
+            cell_cost = grid[pos[0]][pos[1]]
+            node.g = current.g + 1 + cell_cost * 2
+            node.h = heuristic(pos, goal)
+            node.f = node.g + node.h
 
-            neighbor_node.g = tentative_g
-            neighbor_node.h = heuristic(neighbor_pos, goal)
-            neighbor_node.f = neighbor_node.g + neighbor_node.h
-
-            heapq.heappush(open_list, neighbor_node)
+            heapq.heappush(open_list, node)
 
     return None
 
 
 # =========================
-# PATH SMOOTHING
+# SMOOTH PATH
 # =========================
 def smooth_path(path):
     if not path:
@@ -114,13 +114,13 @@ def smooth_path(path):
 
     smooth = [path[0]]
 
-    for i in range(1, len(path) - 1):
+    for i in range(1, len(path)-1):
         prev = smooth[-1]
         curr = path[i]
-        next = path[i + 1]
+        next = path[i+1]
 
-        dir1 = (curr[0] - prev[0], curr[1] - prev[1])
-        dir2 = (next[0] - curr[0], next[1] - curr[1])
+        dir1 = (curr[0]-prev[0], curr[1]-prev[1])
+        dir2 = (next[0]-curr[0], next[1]-curr[1])
 
         if dir1 != dir2:
             smooth.append(curr)
@@ -132,36 +132,44 @@ def smooth_path(path):
 # =========================
 # DYNAMIC OBSTACLE
 # =========================
-def add_dynamic_obstacle(grid, position):
-    r, c = position
+def add_dynamic_obstacle(grid, pos):
+    r,c = pos
     if 0 <= r < len(grid) and 0 <= c < len(grid[0]):
         grid[r][c] = 1
 
 
 # =========================
-# VISUALIZATION
+# VISUALIZATION (HEATMAP)
 # =========================
 def visualize(grid, path, start, goal, filename):
-    plt.figure(figsize=(6, 6))
+    grid_array = np.array(grid)
 
+    plt.figure(figsize=(6,6))
+
+    # Heatmap (cost visualization)
+    plt.imshow(grid_array, cmap='coolwarm', origin='upper')
+
+    # Obstacles overlay
     for r in range(len(grid)):
         for c in range(len(grid[0])):
             if grid[r][c] == 1:
-                plt.scatter(c, r, color='black', s=200)
-            elif grid[r][c] > 1:
-                plt.scatter(c, r, color='gray', s=100)
+                plt.gca().add_patch(
+                    plt.Rectangle((c-0.5, r-0.5), 1, 1, color='black')
+                )
 
+    # Path
     if path:
         x = [p[1] for p in path]
         y = [p[0] for p in path]
-        plt.plot(x, y, marker='o')
+        plt.plot(x, y, linewidth=3)
 
-    plt.scatter(start[1], start[0], color='green', label='Start', s=100)
-    plt.scatter(goal[1], goal[0], color='red', label='Goal', s=100)
+    # Start & Goal
+    plt.scatter(start[1], start[0], s=200, label='Start')
+    plt.scatter(goal[1], goal[0], s=200, marker='X', label='Goal')
 
-    plt.gca().invert_yaxis()
+    plt.title("A* Path Planning with Cost Heatmap")
     plt.legend()
-    plt.title("A* Path Planning (Smoothed + Cost Map)")
+    plt.grid(True)
 
     plt.savefig(filename, bbox_inches='tight')
     plt.show(block=False)
@@ -170,53 +178,42 @@ def visualize(grid, path, start, goal, filename):
 
 
 # =========================
-# MAPS
+# MAP
 # =========================
-def get_map(choice):
-    maps = {
-        1: [
-            [0,0,0,0,0],
-            [0,1,1,0,0],
-            [0,0,0,0,0],
-            [0,1,0,1,0],
-            [0,0,0,0,0]
-        ]
-    }
-    return maps.get(choice, maps[1])
+def get_map():
+    return [
+        [0,0,0,0,0,0],
+        [0,1,1,0,0,0],
+        [0,0,0,0,1,0],
+        [0,1,0,0,0,0],
+        [0,0,0,1,0,0],
+        [0,0,0,0,0,0]
+    ]
 
 
 # =========================
 # MAIN
 # =========================
 if __name__ == "__main__":
-    print("Select Map: 1")
-    try:
-        map_choice = int(input("Enter map number: "))
-    except:
-        map_choice = 1
+    grid = get_map()
+    grid = create_cost_map(grid)
 
-    base_grid = get_map(map_choice)
-    grid = create_cost_map(base_grid)
+    start = (0,0)
+    goal = (5,5)
 
-    start = (0, 1)
-    goal = (len(grid)-1, len(grid[0])-2)
-
-    # FIRST PATH
+    # First path
     path1 = astar(grid, start, goal)
     path1 = smooth_path(path1)
 
-    print("Initial Path:", path1)
     visualize(grid, path1, start, goal, "output1.png")
 
-    # ADD DYNAMIC OBSTACLE
-    if path1 and len(path1) > 3:
+    # Add obstacle
+    if path1:
         block = path1[len(path1)//2]
-        print("Adding obstacle at:", block)
         add_dynamic_obstacle(grid, block)
 
-    # REPLAN
+    # Replan
     path2 = astar(grid, start, goal)
     path2 = smooth_path(path2)
 
-    print("New Path:", path2)
     visualize(grid, path2, start, goal, "output2.png")
