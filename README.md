@@ -1,25 +1,10 @@
-# 🤖 Robotics Path Planning using A*
+# Robotics Path Planning (A*)
 
-This project implements the A* (A-Star) algorithm for path planning on a 2D grid.
-
-## 🚀 Features
-- A* pathfinding algorithm
-- Manhattan distance heuristic
+This project implements A* path planning with:
+- Diagonal movement
+- Euclidean heuristic
 - Obstacle avoidance
-- Grid-based visualization using matplotlib
-- Multiple map selection
+- Path smoothing
 
-## 🧠 Algorithm
-A* uses:
-f(n) = g(n) + h(n)
-
-- g(n): cost from start to node
-- h(n): heuristic (Manhattan distance)
-- f(n): total estimated cost
-
-## 📸 Output
+## Output
 ![Output](output_v2.png)
-
-## ▶️ How to Run
-```bash
-python main.py
