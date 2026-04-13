@@ -21,12 +21,14 @@ class Node:
 # =========================
 # HEURISTIC
 # =========================
-def heuristic(a, b):
+def heuristic(a, b, use_heuristic=True):
+    if not use_heuristic:
+        return 0  # Dijkstra mode
     return math.sqrt((a[0] - b[0])**2 + (a[1] - b[1])**2)
 
 
 # =========================
-# NEIGHBORS
+# NEIGHBORS (8-direction)
 # =========================
 def get_neighbors(node, grid):
     directions = [
@@ -47,45 +49,27 @@ def get_neighbors(node, grid):
 
 
 # =========================
-# COST MAP
+# A* / DIJKSTRA
 # =========================
-def create_cost_map(grid):
-    rows = len(grid)
-    cols = len(grid[0])
-    cost_map = [row[:] for row in grid]
-
-    for r in range(rows):
-        for c in range(cols):
-            if grid[r][c] == 1:
-                for i in range(-1,2):
-                    for j in range(-1,2):
-                        nr, nc = r+i, c+j
-                        if 0 <= nr < rows and 0 <= nc < cols:
-                            if cost_map[nr][nc] == 0:
-                                cost_map[nr][nc] = 3
-
-    return cost_map
-
-
-# =========================
-# A*
-# =========================
-def astar(grid, start, goal):
+def a_star(grid, start, goal, use_heuristic=True):
     open_list = []
     closed = set()
 
     start_node = Node(start)
     heapq.heappush(open_list, start_node)
 
+    nodes_explored = 0
+
     while open_list:
         current = heapq.heappop(open_list)
+        nodes_explored += 1
 
         if current.position == goal:
             path = []
             while current:
                 path.append(current.position)
                 current = current.parent
-            return path[::-1]
+            return path[::-1], nodes_explored
 
         closed.add(current.position)
 
@@ -95,86 +79,52 @@ def astar(grid, start, goal):
 
             node = Node(pos, current)
 
-            cell_cost = grid[pos[0]][pos[1]]
-            node.g = current.g + 1 + cell_cost * 2
-            node.h = heuristic(pos, goal)
+            node.g = current.g + 1
+            node.h = heuristic(pos, goal, use_heuristic)
             node.f = node.g + node.h
 
             heapq.heappush(open_list, node)
 
-    return None
+    return None, nodes_explored
 
 
 # =========================
-# SMOOTH PATH
+# VISUALIZATION (SIDE-BY-SIDE)
 # =========================
-def smooth_path(path):
-    if not path:
-        return path
-
-    smooth = [path[0]]
-
-    for i in range(1, len(path)-1):
-        prev = smooth[-1]
-        curr = path[i]
-        next = path[i+1]
-
-        dir1 = (curr[0]-prev[0], curr[1]-prev[1])
-        dir2 = (next[0]-curr[0], next[1]-curr[1])
-
-        if dir1 != dir2:
-            smooth.append(curr)
-
-    smooth.append(path[-1])
-    return smooth
-
-
-# =========================
-# DYNAMIC OBSTACLE
-# =========================
-def add_dynamic_obstacle(grid, pos):
-    r,c = pos
-    if 0 <= r < len(grid) and 0 <= c < len(grid[0]):
-        grid[r][c] = 1
-
-
-# =========================
-# VISUALIZATION (HEATMAP)
-# =========================
-def visualize(grid, path, start, goal, filename):
+def visualize(grid, path_astar, path_dijkstra, start, goal):
     grid_array = np.array(grid)
 
-    plt.figure(figsize=(6,6))
+    fig, axs = plt.subplots(1, 2, figsize=(12,6))
 
-    # Heatmap (cost visualization)
-    plt.imshow(grid_array, cmap='coolwarm', origin='upper')
+    titles = ["A* (Heuristic)", "Dijkstra (h = 0)"]
+    paths = [path_astar, path_dijkstra]
 
-    # Obstacles overlay
-    for r in range(len(grid)):
-        for c in range(len(grid[0])):
-            if grid[r][c] == 1:
-                plt.gca().add_patch(
-                    plt.Rectangle((c-0.5, r-0.5), 1, 1, color='black')
-                )
+    for ax, path, title in zip(axs, paths, titles):
+        ax.imshow(grid_array)
 
-    # Path
-    if path:
-        x = [p[1] for p in path]
-        y = [p[0] for p in path]
-        plt.plot(x, y, linewidth=3)
+        # Obstacles
+        for r in range(len(grid)):
+            for c in range(len(grid[0])):
+                if grid[r][c] == 1:
+                    ax.add_patch(
+                        plt.Rectangle((c-0.5, r-0.5), 1, 1, color='black')
+                    )
 
-    # Start & Goal
-    plt.scatter(start[1], start[0], s=200, label='Start')
-    plt.scatter(goal[1], goal[0], s=200, marker='X', label='Goal')
+        # Path
+        if path:
+            x = [p[1] for p in path]
+            y = [p[0] for p in path]
+            ax.plot(x, y, linewidth=3)
 
-    plt.title("A* Path Planning with Cost Heatmap")
-    plt.legend()
-    plt.grid(True)
+        # Start & Goal
+        ax.scatter(start[1], start[0], s=100)
+        ax.scatter(goal[1], goal[0], s=100, marker='X')
 
-    plt.savefig(filename, bbox_inches='tight')
-    plt.show(block=False)
-    plt.pause(2)
-    plt.close()
+        ax.set_title(title)
+        ax.invert_yaxis()
+
+    plt.savefig("comparison.png", bbox_inches='tight')
+    plt.show()
 
 
 # =========================
@@ -196,24 +146,20 @@ def get_map():
 # =========================
 if __name__ == "__main__":
     grid = get_map()
-    grid = create_cost_map(grid)
 
     start = (0,0)
     goal = (5,5)
 
-    # First path
-    path1 = astar(grid, start, goal)
-    path1 = smooth_path(path1)
+    # A*
+    path_astar, nodes_a = a_star(grid, start, goal, True)
 
-    visualize(grid, path1, start, goal, "output1.png")
+    # Dijkstra
+    path_dijkstra, nodes_d = a_star(grid, start, goal, False)
 
-    # Add obstacle
-    if path1:
-        block = path1[len(path1)//2]
-        add_dynamic_obstacle(grid, block)
+    print("A* Path Length:", len(path_astar))
+    print("Dijkstra Path Length:", len(path_dijkstra))
 
-    # Replan
-    path2 = astar(grid, start, goal)
-    path2 = smooth_path(path2)
+    print("A* Nodes Explored:", nodes_a)
+    print("Dijkstra Nodes Explored:", nodes_d)
 
-    visualize(grid, path2, start, goal, "output2.png")
+    visualize(grid, path_astar, path_dijkstra, start, goal)
